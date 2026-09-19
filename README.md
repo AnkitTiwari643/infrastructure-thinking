@@ -10,6 +10,7 @@ GitHub renders all diagrams below natively (Mermaid). Start anywhere; suggested 
 4. [Availability Zones](docs/04-availability-zones.md) — blast radius thinking and what multi-AZ really costs
 5. [Disaster Recovery](docs/05-disaster-recovery.md) — active-active vs active-passive, RTO/RPO as design inputs
 6. [DNS Failover with Route 53](docs/06-dns-failover-route53.md) — health checks, routing policies, TTL tradeoffs
+7. [Database Backup Strategy](docs/07-database-backups.md) — why backups, GFS rotation, restore drills at scale
 
 ## How these are written
 

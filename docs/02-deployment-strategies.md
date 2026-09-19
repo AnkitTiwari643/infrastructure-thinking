@@ -1,25 +1,27 @@
-# Deployment Strategies
+# Deployment Strategies: Basics to Architect
 
-Every strategy answers two questions: **how fast do users get the new version?** and **how fast can I take it back?** Optimize for the second one. Rollback speed is the real SLA of a deploy pipeline.
+## Level 1 — Basics
 
-## The lineup
+Deploying means replacing old code with new code on live servers. Every strategy answers two questions: **how fast do users get the new version?** and **how fast can I take it back?** Beginners optimize the first; experience optimizes the second. Rollback speed is the real SLA of a deploy pipeline.
+
+Naive deploy (stop everything, start new) causes downtime and slow recovery. Everything below is a refinement that removes downtime, speeds rollback, or both.
+
+## Level 2 — Production practitioner
+
+### The lineup
 
 | Strategy | How | Rollback | Downtime | Cost |
 |---|---|---|---|---|
 | Recreate | Stop all, start new | Redeploy old (slow) | Yes | 1x |
 | Rolling | Replace N at a time | Slow (re-roll) | No | ~1x |
 | Blue-Green | Full parallel stack, flip router | Instant (flip back) | No | 2x during switch |
-| Canary | 1-5% traffic to new, widen gradually | Instant (shift to 0%) | No | ~1x + analysis |
-| A/B | Like canary, but measures *behavior* | Instant | No | ~1x + metrics |
-| Shadow | Mirror live traffic, discard responses | N/A (no user impact) | No | 2x load |
+| Canary | 1-5% traffic, widen gradually | Instant (shift to 0%) | No | ~1x + analysis |
+| A/B | Like canary, measures *behavior* | Instant | No | ~1x + metrics |
+| Shadow | Mirror traffic, discard responses | N/A | No | 2x load |
 
-## Rolling: the default that is usually enough
+### Rolling (the default)
 
-Kubernetes Deployments and ECS rolling updates do this. Guardrails that make it safe:
-
-- `maxUnavailable: 0` (or min-healthy 100%) — never shrink capacity mid-deploy.
-- Readiness gates — new pods serve traffic only when `/health` passes.
-- Automatic rollback on failed rollout (progress deadline / circuit breaker).
+Kubernetes Deployments / ECS rolling updates. Guardrails: `maxUnavailable: 0`, readiness gates on `/health`, automatic rollback on failed rollout (progress deadline / circuit breaker).
 
 ```mermaid
 flowchart LR
@@ -30,11 +32,9 @@ flowchart LR
     O2 -->|drained| X((terminated))
 ```
 
-## Blue-Green: pay double, sleep well
+### Blue-Green (instant rollback)
 
-Two full environments; the router (ALB target group, Route 53 weighted record) points at one. Deploy to idle, smoke-test it with real traffic shape, flip, keep old warm for one TTL/window, then drain.
-
-Best for: stateful-ish services, risky migrations, compliance windows where "revert in <60s" is the requirement. Worst for: tight budgets, data-layer changes (the DB is shared anyway — see below).
+Two full stacks; router (ALB target group / Route 53 weights) points at one. Deploy idle, smoke with real traffic shape, flip, keep old warm one window, drain. Pay 2x during switch; buy <60s revert.
 
 ```mermaid
 flowchart LR
@@ -52,24 +52,40 @@ flowchart LR
     Green --> DB
 ```
 
-## Canary: rolling with a brain
+### Canary (rolling with a brain)
 
-Ship to 1%, watch error rate/latency/business metrics against baseline, widen in steps (1 → 10 → 50 → 100), auto-halt on regression. Needs real metrics plumbing (this is where Datadog/SLOs earn their keep). Without automated analysis a canary is just a slow rolling deploy with extra steps.
+1% → watch errors/latency/business metrics vs baseline → widen in steps → auto-halt on regression. Without automated analysis it's just a slow rolling deploy with extra steps.
 
-## The database problem nobody diagrams
+### The database problem
 
-App versions are easy; **schemas are the hard part**. All strategies above assume the deploy is code-only. Rules:
+App versions are easy; schemas are hard. Rules: **expand before contract** (add nullable, never rename/drop in the same release), code tolerates both schemas during transition, destructive changes ship one release later.
 
-1. Expand before contract: migrations add (nullable columns, new tables) — never rename/drop in the same release the code stops using them.
-2. Code must tolerate both schemas during the transition window.
-3. Destructive changes ship one release *later*, after old code is gone.
+### Rollback SOP
 
-## Rollback SOP (tape this to the wall)
+Flip traffic first (<5 min target), investigate on the idle stack, then fix-forward or re-deploy the old artifact as a new release. Never "un-deploy."
 
-1. Flip traffic first (target group weights / DNS / flag), ask questions later. Target: <5 min.
-2. Then investigate on the idle stack with production-shaped traffic available for repro.
-3. Then decide: fix-forward on idle, or re-deploy old artifact as new release (never "un-deploy" — always deploy something known-good).
+## Level 3 — Architect: deploys at millions-scale traffic
+
+When a deploy touches thousands of hosts across regions serving millions of RPS, the strategy becomes a control system:
+
+- **Feature flags > deploy strategies.** Decouple *shipping code* from *releasing behavior*. Dark-launch to prod daily; flags ramp exposure per user/region. A bad flag flips off in seconds with zero redeploy — faster than any blue-green flip.
+- **Progressive delivery with automated analysis.** Canary stages gated by SLOs (error budget burn, p99, business KPIs), auto-promote or auto-rollback with no human in the loop. Humans approve stage *policy*, not each release.
+- **Cell-based rollouts.** Divide the fleet into cells (failure-isolated slices); roll cell by cell with bake time between. A bad build kills one cell, never the fleet. Same cells double as your blast-radius story.
+- **Regional sequencing.** Never deploy all regions at once: home region first (full team awake), bake, then wave outward following the sun. One region's incident is contained by construction.
+- **Schema migration at millions of rows.** Online schema change tools (gh-ost/OSC-style: shadow table, trickle-copy, cutover) — `ALTER TABLE` on a hot multi-TB table locks writes and *is* the outage. Backfill in batches with throttling; verify row counts before cutover.
+- **Deploy freezes as code.** Freeze windows (peak events, holidays) enforced by pipeline policy, with a break-glass path that pages leadership. Culture can't hold a freeze; gates can.
+- **Heterogeneous fleet discipline.** At scale old and new versions coexist for a long time (long-tail clients, stuck AZs). Version-skew budgets ("no more than 2 versions live"), protocol backward-compat, and forced-drain deadlines keep the fleet convergent.
+
+```mermaid
+flowchart LR
+    F[Flag off - code live, inert] --> C1[Cell 1 - 1% - auto-analyze]
+    C1 -->|SLOs green| C2[Cells 2-4 - 25%]
+    C2 -->|SLOs green| R1[Home region - 100%]
+    R1 -->|bake| R2[Wave 2 regions]
+    R2 --> R3[Wave 3 regions]
+    C1 -->|SLO breach| RB[Auto-rollback - flag off]
+```
 
 ## Rule of thumb
 
-**Rolling for everyday services, blue-green when instant rollback is the requirement, canary when you have metrics worth gating on. And no strategy survives a coupled schema change — expand/contract always.**
+**Basics: rollback speed over release speed. Production: rolling by default, blue-green for instant revert, canary with real metric gates, expand/contract schemas. Millions: flags decouple ship from release, cells + regional waves contain blasts, online migrations for big tables — the deploy system is a control loop, so automate the loop and approve the policy.**
