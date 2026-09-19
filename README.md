@@ -14,6 +14,7 @@ GitHub renders all diagrams below natively (Mermaid). Start anywhere; suggested 
 8. [Event-Driven Architecture](docs/08-event-driven-architecture.md) — brokers, sagas, idempotence, outbox at scale
 9. [Replica Set Architecture](docs/09-replica-set-architecture.md) — elections, concerns, multi-region sets at scale
 10. [Full Application Architecture](docs/10-full-application-architecture.md) — capstone: all nine guides in one millions-scale system
+11. [AWS Networking](docs/11-aws-networking.md) — VPC to landing zones: subnets, endpoints, TGW, private DNS
 
 ## How these are written
 
