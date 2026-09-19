@@ -13,6 +13,7 @@ GitHub renders all diagrams below natively (Mermaid). Start anywhere; suggested 
 7. [Database Backup Strategy](docs/07-database-backups.md) — why backups, GFS rotation, restore drills at scale
 8. [Event-Driven Architecture](docs/08-event-driven-architecture.md) — brokers, sagas, idempotence, outbox at scale
 9. [Replica Set Architecture](docs/09-replica-set-architecture.md) — elections, concerns, multi-region sets at scale
+10. [Full Application Architecture](docs/10-full-application-architecture.md) — capstone: all nine guides in one millions-scale system
 
 ## How these are written
 
