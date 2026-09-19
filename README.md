@@ -12,6 +12,7 @@ GitHub renders all diagrams below natively (Mermaid). Start anywhere; suggested 
 6. [DNS Failover with Route 53](docs/06-dns-failover-route53.md) — health checks, routing policies, TTL tradeoffs
 7. [Database Backup Strategy](docs/07-database-backups.md) — why backups, GFS rotation, restore drills at scale
 8. [Event-Driven Architecture](docs/08-event-driven-architecture.md) — brokers, sagas, idempotence, outbox at scale
+9. [Replica Set Architecture](docs/09-replica-set-architecture.md) — elections, concerns, multi-region sets at scale
 
 ## How these are written
 
