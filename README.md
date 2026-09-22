@@ -15,6 +15,7 @@ GitHub renders all diagrams below natively (Mermaid). Start anywhere; suggested 
 9. [Replica Set Architecture](docs/09-replica-set-architecture.md) — elections, concerns, multi-region sets at scale
 10. [Full Application Architecture](docs/10-full-application-architecture.md) — capstone: all nine guides in one millions-scale system
 11. [AWS Networking](docs/11-aws-networking.md) — VPC to landing zones: subnets, endpoints, TGW, private DNS
+12. [Kubernetes Secret Management](docs/12-kubernetes-secret-management.md) — etcd truth, ESO + Vault/Secrets Manager, rotation, workload identity at scale
 
 ## How these are written
 
@@ -24,7 +25,7 @@ GitHub renders all diagrams below natively (Mermaid). Start anywhere; suggested 
 
 ## Contribute an idea
 
-Open a PR adding a new file under `docs/` numbered next (`07-...md`), with at least one Mermaid diagram and one rule of thumb. Keep it opinionated.
+Open a PR adding a new file under `docs/` numbered next (`13-...md`), with at least one Mermaid diagram and one rule of thumb. Keep it opinionated.
 
 ## License
 
